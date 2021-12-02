@@ -1,7 +1,7 @@
 import { get as httpsGet } from "https";
 
 const getInput = (year: number, day: number) => {
-  const {USERAGENT, COOKIE} = process.env;
+  const { USERAGENT, COOKIE } = process.env;
   const url = `https://adventofcode.com/${year}/day/${day}/input`;
   return new Promise<string>((f, r) => {
     httpsGet(
@@ -23,12 +23,10 @@ const getInput = (year: number, day: number) => {
 };
 
 export default class Advent {
-  private functions: ((data: string) => Promise<void>)[][];
+  private functions: ((data: string) => Promise<string | number | object>)[][];
 
   constructor() {
-    this.functions = [
-      [this.Day1Problem1, this.Day1Problem2]
-    ];
+    this.functions = [[this.Day1Problem1, this.Day1Problem2]];
   }
 
   async DoToday(day: number, problem?: number) {
@@ -39,32 +37,38 @@ export default class Advent {
       console.error(`Error: no function assigned for day ${day}`);
     else if (problem !== undefined) {
       const Today = this.functions[day - 1][problem - 1];
-      if (Today !== undefined) await Today(data);
+      if (Today !== undefined)
+        console.log(`Day ${day} problem ${problem}:`, await Today(data));
       else
         console.error(
           `Error: no function assigned for day ${day} problem ${problem}`
         );
     } else {
-      for (const Today of this.functions[day - 1]) await Today(data);
+      const todayAll = this.functions[day - 1];
+      for (const problem in todayAll)
+        console.log(
+          `Day ${day} problem ${Number.parseInt(problem) + 1}:`,
+          await todayAll[problem](data)
+        );
     }
   }
 
   async Day1Problem1(data: string) {
-    const depths = data.split('\n').map(i => Number.parseInt(i));
+    const depths = data.split("\n").map((i) => Number.parseInt(i));
 
     let lastDepth: number | undefined = undefined;
     let retval = 0;
 
     for (const depth of depths) {
       if (lastDepth !== undefined && depth > lastDepth) retval++;
-      lastDepth = depth
+      lastDepth = depth;
     }
 
-    console.log(retval);
+    return retval;
   }
 
   async Day1Problem2(data: string) {
-    const depths = data.split('\n').map(i => Number.parseInt(i));
+    const depths = data.split("\n").map((i) => Number.parseInt(i));
 
     const lastDepth: number[] = [];
     let retval = 0;
@@ -77,10 +81,11 @@ export default class Advent {
         lastDepth.push(depth);
         lastDepth.shift();
         if (lastDepth.reduce(arraySum) > lastDepthSum) retval++;
-      }
-      else lastDepth.push(depth);
+      } else lastDepth.push(depth);
     }
 
-    console.log(retval);
+    return retval;
   }
+
+  
 }
