@@ -1,15 +1,14 @@
 import { get as httpsGet } from "https";
 
 const getInput = (year: number, day: number) => {
-  const {COOKIE} = process.env;
+  const {USERAGENT, COOKIE} = process.env;
   const url = `https://adventofcode.com/${year}/day/${day}/input`;
   return new Promise<string>((f, r) => {
     httpsGet(
       url,
       {
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.114 Safari/537.36 Vivaldi/4.3.2439.63",
+          "User-Agent": USERAGENT,
           Cookie: `session=${COOKIE};`,
         },
       },
@@ -27,7 +26,9 @@ export default class Advent {
   private functions: ((data: string) => Promise<void>)[][];
 
   constructor() {
-    this.functions = [[this.Day1Problem1]];
+    this.functions = [
+      [this.Day1Problem1, this.Day1Problem2]
+    ];
   }
 
   async DoToday(day: number, problem?: number) {
@@ -49,7 +50,37 @@ export default class Advent {
   }
 
   async Day1Problem1(data: string) {
-    console.log(data);
-    console.log("Hello world");
+    const depths = data.split('\n').map(i => Number.parseInt(i));
+
+    let lastDepth: number | undefined = undefined;
+    let retval = 0;
+
+    for (const depth of depths) {
+      if (lastDepth !== undefined && depth > lastDepth) retval++;
+      lastDepth = depth
+    }
+
+    console.log(retval);
+  }
+
+  async Day1Problem2(data: string) {
+    const depths = data.split('\n').map(i => Number.parseInt(i));
+
+    const lastDepth: number[] = [];
+    let retval = 0;
+
+    const arraySum = (r: number, i: number) => i + r;
+
+    for (const depth of depths) {
+      if (lastDepth.length === 3) {
+        const lastDepthSum = lastDepth.reduce(arraySum);
+        lastDepth.push(depth);
+        lastDepth.shift();
+        if (lastDepth.reduce(arraySum) > lastDepthSum) retval++;
+      }
+      else lastDepth.push(depth);
+    }
+
+    console.log(retval);
   }
 }
