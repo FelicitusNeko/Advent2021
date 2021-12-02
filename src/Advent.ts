@@ -26,7 +26,11 @@ export default class Advent {
   private functions: ((data: string) => Promise<string | number | object>)[][];
 
   constructor() {
-    this.functions = [[this.Day1Problem1, this.Day1Problem2]];
+    this.functions = [
+      [this.Day1Problem1, this.Day1Problem2],
+      [this.Day2Problem1, this.Day2Problem2],
+      [this.Dummy, this.Dummy]
+    ];
   }
 
   async DoToday(day: number, problem?: number) {
@@ -51,6 +55,10 @@ export default class Advent {
           await todayAll[problem](data)
         );
     }
+  }
+
+  async Dummy() {
+    return "Dummy function";
   }
 
   async Day1Problem1(data: string) {
@@ -87,5 +95,59 @@ export default class Advent {
     return retval;
   }
 
-  
+  async Day2Problem1(data: string) {
+    let forward = 0;
+    let depth = 0;
+
+    data
+      .trim()
+      .split("\n")
+      .forEach((i) => {
+        const line = i.split(" ");
+        const val = Number.parseInt(line[1]);
+
+        switch (line[0]) {
+          case "forward":
+            forward += val;
+            break;
+          case "down":
+            depth += val;
+            break;
+          case "up":
+            depth -= val;
+            break;
+        }
+      });
+
+    return forward * depth;
+  }
+
+  async Day2Problem2(data: string) {
+    let forward = 0;
+    let depth = 0;
+    let aim = 0;
+
+    data
+      .trim()
+      .split("\n")
+      .forEach((i) => {
+        const line = i.split(" ");
+        const val = Number.parseInt(line[1]);
+
+        switch (line[0]) {
+          case "forward":
+            forward += val;
+            depth += aim * val;
+            break;
+          case "down":
+            aim += val;
+            break;
+          case "up":
+            aim -= val;
+            break;
+        }
+      });
+
+    return forward * depth;
+  }
 }
