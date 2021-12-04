@@ -29,7 +29,7 @@ export default class Advent {
     this.functions = [
       [this.Day1Problem1, this.Day1Problem2],
       [this.Day2Problem1, this.Day2Problem2],
-      [this.Dummy, this.Dummy]
+      [this.Day3Problem1, this.Day3Problem2],
     ];
   }
 
@@ -149,5 +149,58 @@ export default class Advent {
       });
 
     return forward * depth;
+  }
+
+  async Day3Problem1(data: string) {
+    const readouts = data.split("\n");
+    const readoutCount = readouts.length;
+    const oneCount = new Array<number>(readouts[0].length).fill(0);
+
+    readouts.forEach((i) => {
+      i.split("").forEach((c, x) => (oneCount[x] += c === "1" ? 1 : 0));
+    });
+
+    let gamma = "",
+      epsilon = "";
+    oneCount.forEach((i) => {
+      if (i > readoutCount / 2) {
+        gamma += "1";
+        epsilon += "0";
+      } else {
+        gamma += "0";
+        epsilon += "1";
+      }
+    });
+
+    return Number.parseInt(gamma, 2) * Number.parseInt(epsilon, 2);
+  }
+
+  async Day3Problem2(data: string) {
+    const readouts = data.split("\n");
+    const readoutLen = readouts[0].length;
+
+    const valueScrubber = (targetOnes: boolean) => {
+      let worksheet = readouts.slice(0);
+
+      for (let x = 0; x < readoutLen; x++) {
+        let oneCount = 0;
+        worksheet.forEach((i) => {
+          if (i[x] === "1") oneCount++;
+        });
+
+        const keepTarget = (oneCount >= worksheet.length / 2) === targetOnes ? '1' : '0'
+        worksheet = worksheet.filter(i => i[x] === keepTarget);
+        if (worksheet.length <= 1) break;
+      }
+
+      if (worksheet.length === 0) throw new Error('No values left');
+      if (worksheet.length > 1) throw new Error(`Too many values left ${worksheet.length}`);
+      return worksheet[0];
+    };
+
+    const O2Gen = valueScrubber(true);
+    const CO2Scrub = valueScrubber(false);
+
+    return Number.parseInt(O2Gen, 2) * Number.parseInt(CO2Scrub, 2);
   }
 }
