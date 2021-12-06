@@ -40,6 +40,8 @@ export default class Advent {
       [this.Day2Problem1, this.Day2Problem2],
       [this.Day3Problem1, this.Day3Problem2],
       [this.Day4Problem1, this.Day4Problem2],
+      [this.Day5Problem1, this.Day5Problem2],
+      [this.Day6Problem1, this.Day6Problem2]
     ];
   }
 
@@ -52,7 +54,10 @@ export default class Advent {
     else if (problem !== undefined) {
       const Today = this.functions[day - 1][problem - 1];
       if (Today !== undefined)
-        console.log(`Day ${day} problem ${problem}:`, await Today.call(this, data));
+        console.log(
+          `Day ${day} problem ${problem}:`,
+          await Today.call(this, data)
+        );
       else
         console.error(
           `Error: no function assigned for day ${day} problem ${problem}`
@@ -313,4 +318,99 @@ export default class Advent {
   }
 
   // Day 5
+  async Day5Problem1(data: string) {
+    const readouts = data
+      .trim()
+      .split("\n")
+      .map((i) =>
+        /(\d+),(\d+) -> (\d+),(\d+)/g
+          .exec(i)
+          ?.slice(1)
+          .map((i) => Number.parseInt(i))
+      ) as number[][];
+    const outData: Record<string, number> = {};
+
+    for (const [x1, y1, x2, y2] of readouts) {
+      if (x1 === x2) {
+        for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+          if (!outData[`${x1},${y}`]) outData[`${x1},${y}`] = 1;
+          else outData[`${x1},${y}`]++;
+        }
+      } else if (y1 === y2) {
+        for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+          if (!outData[`${x},${y1}`]) outData[`${x},${y1}`] = 1;
+          else outData[`${x},${y1}`]++;
+        }
+      } else {
+        continue;
+      }
+    }
+
+    return Object.values(outData).filter((i) => i >= 2).length;
+  }
+
+  async Day5Problem2(data: string) {
+    const readouts = data
+      .trim()
+      .split("\n")
+      .map((i) =>
+        /(\d+),(\d+) -> (\d+),(\d+)/g
+          .exec(i)
+          ?.slice(1)
+          .map((i) => Number.parseInt(i))
+      ) as number[][];
+    const outData: Record<string, number> = {};
+
+    for (const [x1, y1, x2, y2] of readouts) {
+      if (x1 === x2) {
+        for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+          if (!outData[`${x1},${y}`]) outData[`${x1},${y}`] = 1;
+          else outData[`${x1},${y}`]++;
+        }
+      } else if (y1 === y2) {
+        for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+          if (!outData[`${x},${y1}`]) outData[`${x},${y1}`] = 1;
+          else outData[`${x},${y1}`]++;
+        }
+      } else {
+        const xmult = x1 > x2 ? -1 : 1,
+          ymult = y1 > y2 ? -1 : 1;
+        for (let z = 0; z <= Math.abs(x1 - x2); z++) {
+          if (!outData[`${x1 + z * xmult},${y1 + z * ymult}`])
+            outData[`${x1 + z * xmult},${y1 + z * ymult}`] = 1;
+          else outData[`${x1 + z * xmult},${y1 + z * ymult}`]++;
+        }
+      }
+    }
+
+    return Object.values(outData).filter((i) => i >= 2).length;
+  }
+
+  // Day 6
+  FishSimulator(data: string, days: number) {
+    const fishCounts = new Array<number>(9).fill(0);
+
+    data
+      .trim()
+      .split(",")
+      .map((i) => Number.parseInt(i))
+      .forEach((i) => fishCounts[i]++);
+
+    for (let x = 0; x < days; x++) {
+      const zeroFish = fishCounts.shift();
+      if (zeroFish === undefined) throw new Error("zeroFish undefined");
+      fishCounts[6] += zeroFish;
+      fishCounts.push(zeroFish);
+    }
+
+    return fishCounts.reduce((r, i) => r + i);
+  }
+
+  async Day6Problem1(data: string) {
+    return this.FishSimulator(data, 80);
+  }
+
+  async Day6Problem2(data: string) {
+    return this.FishSimulator(data, 256);
+  }
 }
