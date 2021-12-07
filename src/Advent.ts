@@ -41,7 +41,8 @@ export default class Advent {
       [this.Day3Problem1, this.Day3Problem2],
       [this.Day4Problem1, this.Day4Problem2],
       [this.Day5Problem1, this.Day5Problem2],
-      [this.Day6Problem1, this.Day6Problem2]
+      [this.Day6Problem1, this.Day6Problem2],
+      [this.Day7Problem1, this.Day7Problem2],
     ];
   }
 
@@ -412,5 +413,55 @@ export default class Advent {
 
   async Day6Problem2(data: string) {
     return this.FishSimulator(data, 256);
+  }
+
+  // Day 7
+  async Day7Problem1(data: string) {
+    const positions = data
+      .trim()
+      .split(",")
+      .map((i) => Number.parseInt(i));
+    const max = Math.max(...positions),
+      min = Math.min(...positions);
+
+    let lowPos = min,
+      lowConsumption = Number.POSITIVE_INFINITY;
+    for (let x = min; x <= max; x++) {
+      const consumption = positions.reduce((r, i) => r + Math.abs(i - x), 0);
+      if (consumption < lowConsumption) {
+        lowPos = x;
+        lowConsumption = consumption;
+      }
+    }
+
+    console.debug("Position with lowest consumption value:", lowPos);
+    return lowConsumption;
+  }
+
+  async Day7Problem2(data: string) {
+    const positions = data
+      .trim()
+      .split(",")
+      .map((i) => Number.parseInt(i));
+    const max = Math.max(...positions),
+      min = Math.min(...positions);
+
+    let lowPos = min,
+      lowConsumption = Number.POSITIVE_INFINITY;
+    for (let x = min; x <= max; x++) {
+      const consumption = positions.reduce((r, i) => {
+        const diff = Math.abs(i - x);
+        let triangle = 0;
+        for (let y = 1; y <= diff; y++) triangle += y;
+        return r + triangle;
+      }, 0);
+      if (consumption < lowConsumption) {
+        lowPos = x;
+        lowConsumption = consumption;
+      }
+    }
+
+    console.debug("Position with lowest consumption value:", lowPos);
+    return lowConsumption;
   }
 }
