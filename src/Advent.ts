@@ -43,6 +43,7 @@ export default class Advent {
       [this.Day5Problem1, this.Day5Problem2],
       [this.Day6Problem1, this.Day6Problem2],
       [this.Day7Problem1, this.Day7Problem2],
+      [this.Day8Problem1, this.Day8Problem2],
     ];
   }
 
@@ -463,5 +464,116 @@ export default class Advent {
 
     console.debug("Position with lowest consumption value:", lowPos);
     return lowConsumption;
+  }
+
+  // Day 8
+  Parse7Sline(line: string) {
+    const lineTokens = line.split(" ");
+    const SortLetters = (i: string) =>
+      i
+        .split("")
+        .sort((a, b) => a.charCodeAt(0) - b.charCodeAt(0))
+        .join("");
+    return {
+      digits: lineTokens.slice(0, 10).map(SortLetters),
+      display: lineTokens.slice(11).map(SortLetters),
+    };
+  }
+
+  async Day8Problem1(data: string) {
+    const lines = data
+      .trim()
+      .split("\n")
+      .map((i) => this.Parse7Sline(i));
+
+    const uniqueLengths = [2, 3, 4, 7];
+    let uniqueCount = 0;
+    for (const line of lines) {
+      uniqueCount += line.display.filter((i) =>
+        uniqueLengths.includes(i.length)
+      ).length;
+    }
+
+    return uniqueCount;
+  }
+
+  async Day8Problem2(data: string) {
+    const lines = data
+      .trim()
+      .split("\n")
+      .map((i) => this.Parse7Sline(i));
+
+    const UniqueSegments = (haystack: string, ...straws: string[]) => {
+      let stackSegs = haystack.split("");
+      for (const straw of straws) {
+        const strawSegs = straw.split("");
+        stackSegs = stackSegs.filter((i) => !strawSegs.includes(i));
+      }
+      return stackSegs.join("");
+    };
+    const ContainsAllOf = (haystack: string, ...needles: string[]) => {
+      const stackSegs = haystack.split("");
+      for (const needle of needles) {
+        if (needle.split("").filter((i) => !stackSegs.includes(i)).length > 0)
+          return false;
+      }
+      return true;
+    };
+
+    let total = 0;
+    for (const line of lines) {
+      const refArray = new Array<string>(10).fill("");
+      let workingLine = line.digits.slice();
+
+      workingLine.forEach((i) => {
+        switch (i.length) {
+          case 2:
+            refArray[1] = i;
+            break;
+          case 3:
+            refArray[7] = i;
+            break;
+          case 4:
+            refArray[4] = i;
+            break;
+          case 7:
+            refArray[8] = i;
+            break;
+        }
+      });
+      workingLine = workingLine.filter((i) => !refArray.includes(i));
+
+      const topLine = UniqueSegments(refArray[7], refArray[1]);
+      const fourLines = UniqueSegments(refArray[4], refArray[1]);
+
+      refArray[9] = workingLine.filter(
+        (i) =>
+          i.length === 6 && ContainsAllOf(i, topLine, fourLines, refArray[1])
+      )[0];
+      const bottomLine = UniqueSegments(refArray[9], refArray[7], refArray[4]);
+      refArray[3] = workingLine.filter(
+        (i) =>
+          i.length === 5 && ContainsAllOf(i, topLine, bottomLine, refArray[1])
+      )[0];
+      workingLine = workingLine.filter((i) => !refArray.includes(i));
+
+      refArray[5] = workingLine.filter(
+        (i) => i.length === 5 && ContainsAllOf(refArray[9], i)
+      )[0];
+      refArray[0] = workingLine.filter(
+        (i) =>
+          i.length === 6 && ContainsAllOf(i, topLine, bottomLine, refArray[1])
+      )[0];
+      workingLine = workingLine.filter((i) => !refArray.includes(i));
+
+      refArray[6] = workingLine.filter((i) => i.length === 6)[0];
+      refArray[2] = workingLine.filter((i) => i.length === 5)[0];
+
+      total += Number.parseInt(
+        line.display.map((i) => refArray.indexOf(i)).join("")
+      );
+    }
+
+    return total;
   }
 }
