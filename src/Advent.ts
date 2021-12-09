@@ -44,6 +44,7 @@ export default class Advent {
       [this.Day6Problem1, this.Day6Problem2],
       [this.Day7Problem1, this.Day7Problem2],
       [this.Day8Problem1, this.Day8Problem2],
+      [this.Day9Problem1, this.Day9Problem2],
     ];
   }
 
@@ -575,5 +576,95 @@ export default class Advent {
     }
 
     return total;
+  }
+
+  // Day 9
+  async Day9Problem1(data: string) {
+    const map = data
+      .trim()
+      .split("\n")
+      .map((i) => i.split("").map((ii) => Number.parseInt(ii)));
+
+    let retval = 0;
+    for (let y = 0; y < map.length; y++)
+      for (let x = 0; x < map[y].length; x++) {
+        const here = map[y][x];
+        if (y > 0 && map[y - 1][x] <= here) continue;
+        if (y + 1 < map.length && map[y + 1][x] <= here) continue;
+        if (x > 0 && map[y][x - 1] <= here) continue;
+        if (x + 1 < map[y].length && map[y][x + 1] <= here) continue;
+        retval += here + 1;
+      }
+
+    return retval;
+  }
+
+  async Day9Problem2(data: string) {
+    interface mapData {
+      depth: number;
+      basin?: number;
+    }
+
+    const map = data
+      .trim()
+      .split("\n")
+      .map((i) =>
+        i.split("").map((ii) => {
+          return { depth: Number.parseInt(ii) } as mapData;
+        })
+      );
+    const basinSizes: number[] = [];
+
+    for (let y = 0; y < map.length; y++)
+      for (let x = 0; x < map[y].length; x++) {
+        const here = map[y][x].depth;
+        if (y > 0 && map[y - 1][x].depth <= here) continue;
+        if (y + 1 < map.length && map[y + 1][x].depth <= here) continue;
+        if (x > 0 && map[y][x - 1].depth <= here) continue;
+        if (x + 1 < map[y].length && map[y][x + 1].depth <= here) continue;
+        map[y][x].basin = basinSizes.length;
+        basinSizes.push(1);
+      }
+
+    let changes = true;
+    while (changes) {
+      changes = false;
+      for (let y = 0; y < map.length; y++)
+        for (let x = 0; x < map[y].length; x++) {
+          const here = map[y][x];
+          if (here.depth === 9 || here.basin !== undefined) continue;
+
+          const AssignBasin = (y: number, x: number) => {
+            const there = map[y][x];
+            if (there.basin === undefined)
+              throw new Error("Trying to assign undefined basin");
+            here.basin = there.basin;
+            basinSizes[here.basin]++;
+            changes = true;
+          };
+
+          if (y > 0 && map[y - 1][x].basin !== undefined) {
+            AssignBasin(y - 1, x);
+            continue;
+          }
+          if (y + 1 < map.length && map[y + 1][x].basin !== undefined) {
+            AssignBasin(y + 1, x);
+            continue;
+          }
+          if (x > 0 && map[y][x - 1].basin !== undefined) {
+            AssignBasin(y, x - 1);
+            continue;
+          }
+          if (x + 1 < map[y].length && map[y][x + 1].basin !== undefined) {
+            AssignBasin(y, x + 1);
+            continue;
+          }
+        }
+    }
+
+    return basinSizes
+      .sort((a, b) => b - a)
+      .slice(0, 3)
+      .reduce((r, i) => r * i);
   }
 }
