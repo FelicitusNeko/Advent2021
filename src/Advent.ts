@@ -45,6 +45,7 @@ export default class Advent {
       [this.Day7Problem1, this.Day7Problem2],
       [this.Day8Problem1, this.Day8Problem2],
       [this.Day9Problem1, this.Day9Problem2],
+      [this.Day10Problem1, this.Day10Problem2],
     ];
   }
 
@@ -666,5 +667,74 @@ export default class Advent {
       .sort((a, b) => b - a)
       .slice(0, 3)
       .reduce((r, i) => r * i);
+  }
+
+  // Day 10
+  async Day10Problem1(data: string) {
+    const lines = data.trim().split("\n");
+
+    enum Bracket {
+      Paren,
+      Square,
+      Curly,
+      Angle,
+    }
+
+    const scoreValues: Record<number, number> = {
+      [Bracket.Paren]: 3,
+      [Bracket.Square]: 57,
+      [Bracket.Curly]: 1197,
+      [Bracket.Angle]: 25137,
+    };
+
+    const opens = ["(", "[", "{", "<"],
+      closes = [")", "]", "}", ">"];
+
+    const ScoreLine = (line: string): number => {
+      const stack: Bracket[] = [];
+      for (const char of line.split("")) {
+        if (opens.includes(char)) {
+          stack.push(opens.indexOf(char) as Bracket);
+        } else if (closes.includes(char)) {
+          const bracket = closes.indexOf(char) as Bracket;
+          if (stack.pop() !== bracket) return scoreValues[bracket];
+        }
+      }
+      return 0;
+    };
+
+    return lines.map(ScoreLine).reduce((r, i) => r + i);
+  }
+
+  async Day10Problem2(data: string) {
+    const lines = data.trim().split("\n");
+
+    enum Bracket {
+      Paren,
+      Square,
+      Curly,
+      Angle,
+    }
+
+    const opens = ["(", "[", "{", "<"],
+      closes = [")", "]", "}", ">"];
+
+    const FillAndScoreLine = (line: string): number | null => {
+      const stack: Bracket[] = [];
+      for (const char of line.split("")) {
+        if (opens.includes(char)) {
+          stack.push(opens.indexOf(char) as Bracket);
+        } else if (closes.includes(char)) {
+          const bracket = closes.indexOf(char) as Bracket;
+          if (stack.pop() !== bracket) return null;
+        }
+      }
+      return stack.reverse().reduce((r, i) => r * 5 + i + 1, 0);
+    };
+
+    const result = (
+      lines.map(FillAndScoreLine).filter((i) => i !== null) as number[]
+    ).sort((a, b) => a - b);
+    return result[Math.floor(result.length / 2)];
   }
 }
