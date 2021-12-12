@@ -1,5 +1,6 @@
 import { get as httpsGet } from "https";
 
+// Day 4
 interface BingoBoard {
   data: BingoSpace[][];
   winner: boolean;
@@ -9,11 +10,13 @@ interface BingoSpace {
   marked: boolean;
 }
 
+// Day 11
 interface Octocell {
   energy: number;
   flash: boolean;
 }
 
+// Day 12
 interface CaveNode {
   name: string;
   big: boolean;
