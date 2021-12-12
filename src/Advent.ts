@@ -22,7 +22,6 @@ interface CaveNode {
   bigJoins: string[];
 }
 
-
 const getInput = (year: number, day: number) => {
   const { USERAGENT, COOKIE } = process.env;
   const url = `https://adventofcode.com/${year}/day/${day}/input`;
@@ -84,11 +83,13 @@ export default class Advent {
         );
     } else {
       const todayAll = this.functions[day - 1];
-      for (const problem in todayAll)
-        console.log(
-          `Day ${day} problem ${Number.parseInt(problem) + 1}:`,
-          await todayAll[problem].call(this, data)
-        );
+      await Promise.all(
+        todayAll.map((i, x) =>
+          i
+            .call(this, data)
+            .then((ii) => console.log(`Day ${day} problem ${x + 1}:`, ii))
+        )
+      );
     }
   }
 
@@ -839,8 +840,14 @@ export default class Advent {
       .map((i) => i.split("-"));
 
     const nodes: Record<string, CaveNode> = {
-      start: { name: 'start', big: false, smallJoins: [], bigJoins: [] },
-      end: { name: 'end', big: false, isEnd: true, smallJoins: [], bigJoins: [] },
+      start: { name: "start", big: false, smallJoins: [], bigJoins: [] },
+      end: {
+        name: "end",
+        big: false,
+        isEnd: true,
+        smallJoins: [],
+        bigJoins: [],
+      },
     };
 
     for (const cave of new Set(
@@ -853,7 +860,7 @@ export default class Advent {
         name: cave,
         big: /^[A-Z]+$/.test(cave),
         smallJoins: [],
-        bigJoins: []
+        bigJoins: [],
       };
     }
 
@@ -879,7 +886,7 @@ export default class Advent {
     node: CaveNode,
     curPath: string[],
     smallCavesVisited: string[],
-    doublerUsed: boolean,
+    doublerUsed: boolean
   ) {
     //console.debug('Scanning at:', node.name);
     if (node.isEnd) {
@@ -888,18 +895,20 @@ export default class Advent {
     }
     for (const bigJoin of node.bigJoins)
       this.FindPath(
-        paths, nodes,
+        paths,
+        nodes,
         nodes[bigJoin],
         curPath.concat(bigJoin),
         smallCavesVisited,
         doublerUsed
       );
-    const usableSmallJoins = node.smallJoins.filter((i) =>
-      !doublerUsed || !smallCavesVisited.includes(i)
+    const usableSmallJoins = node.smallJoins.filter(
+      (i) => !doublerUsed || !smallCavesVisited.includes(i)
     );
     for (const smallJoin of usableSmallJoins)
       this.FindPath(
-        paths, nodes,
+        paths,
+        nodes,
         nodes[smallJoin],
         curPath.concat(smallJoin),
         smallCavesVisited.concat(smallJoin),
@@ -923,5 +932,4 @@ export default class Advent {
   async Day12Problem2(data: string) {
     return this.Day12(data, false);
   }
-
 }
