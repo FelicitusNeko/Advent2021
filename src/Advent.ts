@@ -9,6 +9,11 @@ interface BingoSpace {
   marked: boolean;
 }
 
+interface Octocell {
+  energy: number;
+  flash: boolean;
+}
+
 const getInput = (year: number, day: number) => {
   const { USERAGENT, COOKIE } = process.env;
   const url = `https://adventofcode.com/${year}/day/${day}/input`;
@@ -46,6 +51,7 @@ export default class Advent {
       [this.Day8Problem1, this.Day8Problem2],
       [this.Day9Problem1, this.Day9Problem2],
       [this.Day10Problem1, this.Day10Problem2],
+      [this.Day11Problem1, this.Day11Problem2],
     ];
   }
 
@@ -737,4 +743,83 @@ export default class Advent {
     ).sort((a, b) => a - b);
     return result[Math.floor(result.length / 2)];
   }
+
+  // Day 11
+  OctopusCycle(map: Octocell[][]) {
+    let retval = 0;
+    for (const row of map) for (const cell of row) cell.energy++;
+
+    let anyChanged = false;
+    do {
+      anyChanged = false;
+
+      for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++)
+          if (map[y][x].energy > 9 && !map[y][x].flash) {
+            map[y][x].flash = true;
+            anyChanged = true;
+            for (let dy = -1; dy <= 1; dy++) {
+              if (y + dy < 0 || y + dy >= map.length) continue;
+              for (let dx = -1; dx <= 1; dx++) {
+                if (
+                  x + dx < 0 ||
+                  x + dx >= map[y].length ||
+                  (dx === 0 && dy === 0)
+                )
+                  continue;
+                map[y + dy][x + dx].energy++;
+              }
+            }
+          }
+      }
+    } while (anyChanged);
+
+    for (const row of map)
+      for (const cell of row)
+        if (cell.flash) {
+          cell.energy = 0;
+          cell.flash = false;
+          retval++;
+        }
+    return retval;
+  }
+
+  async Day11Problem1(data: string) {
+    const map = data
+      .trim()
+      .split("\n")
+      .map((i) =>
+        i.split("").map((ii) => {
+          return { energy: Number.parseInt(ii), flash: false } as Octocell;
+        })
+      );
+
+    let retval = 0;
+
+    for (let z = 0; z < 100; z++) retval += this.OctopusCycle(map);
+
+    return retval;
+  }
+
+  async Day11Problem2(data: string) {
+    const map = data
+      .trim()
+      .split("\n")
+      .map((i) =>
+        i.split("").map((ii) => {
+          return { energy: Number.parseInt(ii), flash: false } as Octocell;
+        })
+      );
+
+    const flashTarget = map.reduce((r, i) => r + i.length, 0);
+    let cycles = 0;
+
+    do {
+      cycles++;
+    } while (this.OctopusCycle(map) < flashTarget);
+
+    return cycles;
+  }
+
+  
 }
