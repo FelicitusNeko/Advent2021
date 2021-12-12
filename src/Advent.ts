@@ -14,6 +14,15 @@ interface Octocell {
   flash: boolean;
 }
 
+interface CaveNode {
+  name: string;
+  big: boolean;
+  isEnd?: boolean;
+  smallJoins: string[];
+  bigJoins: string[];
+}
+
+
 const getInput = (year: number, day: number) => {
   const { USERAGENT, COOKIE } = process.env;
   const url = `https://adventofcode.com/${year}/day/${day}/input`;
@@ -52,6 +61,7 @@ export default class Advent {
       [this.Day9Problem1, this.Day9Problem2],
       [this.Day10Problem1, this.Day10Problem2],
       [this.Day11Problem1, this.Day11Problem2],
+      [this.Day12Problem1, this.Day12Problem2],
     ];
   }
 
@@ -821,5 +831,97 @@ export default class Advent {
     return cycles;
   }
 
-  
+  // Day 12
+  GenerateCaveSystem(data: string) {
+    const connections = data
+      .trim()
+      .split("\n")
+      .map((i) => i.split("-"));
+
+    const nodes: Record<string, CaveNode> = {
+      start: { name: 'start', big: false, smallJoins: [], bigJoins: [] },
+      end: { name: 'end', big: false, isEnd: true, smallJoins: [], bigJoins: [] },
+    };
+
+    for (const cave of new Set(
+      connections
+        .reduce((r: string[], i: string[]) => r.concat(...i), [])
+        .filter((i) => !["start", "end"].includes(i))
+        .sort((a, b) => a.localeCompare(b))
+    )) {
+      nodes[cave] = {
+        name: cave,
+        big: /^[A-Z]+$/.test(cave),
+        smallJoins: [],
+        bigJoins: []
+      };
+    }
+
+    for (const connection of connections) {
+      if (nodes[connection[0]].big)
+        nodes[connection[1]].bigJoins.push(connection[0]);
+      else nodes[connection[1]].smallJoins.push(connection[0]);
+      if (nodes[connection[1]].big)
+        nodes[connection[0]].bigJoins.push(connection[1]);
+      else nodes[connection[0]].smallJoins.push(connection[1]);
+    }
+    for (const node of Object.values(nodes))
+      node.smallJoins = node.smallJoins
+        .filter((i) => i !== "start")
+        .sort((a, b) => a.localeCompare(b));
+
+    return nodes;
+  }
+
+  FindPath(
+    paths: string[][],
+    nodes: Record<string, CaveNode>,
+    node: CaveNode,
+    curPath: string[],
+    smallCavesVisited: string[],
+    doublerUsed: boolean,
+  ) {
+    //console.debug('Scanning at:', node.name);
+    if (node.isEnd) {
+      paths.push(curPath);
+      return;
+    }
+    for (const bigJoin of node.bigJoins)
+      this.FindPath(
+        paths, nodes,
+        nodes[bigJoin],
+        curPath.concat(bigJoin),
+        smallCavesVisited,
+        doublerUsed
+      );
+    const usableSmallJoins = node.smallJoins.filter((i) =>
+      !doublerUsed || !smallCavesVisited.includes(i)
+    );
+    for (const smallJoin of usableSmallJoins)
+      this.FindPath(
+        paths, nodes,
+        nodes[smallJoin],
+        curPath.concat(smallJoin),
+        smallCavesVisited.concat(smallJoin),
+        doublerUsed || smallCavesVisited.includes(smallJoin)
+      );
+  }
+
+  Day12(data: string, startingDoubler: boolean) {
+    const nodes = this.GenerateCaveSystem(data);
+    const paths: string[][] = [];
+
+    this.FindPath(paths, nodes, nodes.start, ["start"], [], startingDoubler);
+
+    return paths.length;
+  }
+
+  async Day12Problem1(data: string) {
+    return this.Day12(data, true);
+  }
+
+  async Day12Problem2(data: string) {
+    return this.Day12(data, false);
+  }
+
 }
