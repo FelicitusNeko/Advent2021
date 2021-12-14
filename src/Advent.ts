@@ -1,5 +1,28 @@
 import { get as httpsGet } from "https";
 
+const testData = null;
+/*const testData = `6,10
+0,14
+9,10
+0,3
+10,4
+4,11
+6,0
+6,12
+4,1
+0,13
+10,12
+3,4
+3,0
+8,4
+1,10
+2,14
+8,10
+9,0
+
+fold along y=7
+fold along x=5`;*/
+
 // Day 4
 interface BingoBoard {
   data: BingoSpace[][];
@@ -25,7 +48,18 @@ interface CaveNode {
   bigJoins: string[];
 }
 
+// Day 13
+interface Position {
+  x: number;
+  y: number;
+}
+interface FoldInstruction {
+  direction: string;
+  position: number;
+}
+
 const getInput = (year: number, day: number) => {
+  if (testData !== null) return testData;
   const { USERAGENT, COOKIE } = process.env;
   const url = `https://adventofcode.com/${year}/day/${day}/input`;
   return new Promise<string>((f, r) => {
@@ -64,6 +98,7 @@ export default class Advent {
       [this.Day10Problem1, this.Day10Problem2],
       [this.Day11Problem1, this.Day11Problem2],
       [this.Day12Problem1, this.Day12Problem2],
+      [this.Day13Problem1, this.Day13Problem2]
     ];
   }
 
@@ -934,5 +969,100 @@ export default class Advent {
 
   async Day12Problem2(data: string) {
     return this.Day12(data, false);
+  }
+
+  // Day 13
+  ParseSheetAndFolds(data: string): [Position[], FoldInstruction[]] {
+    const baseData = data.trim().split(/\n{2}/);
+    const coords = baseData[0]
+      .trim()
+      .split(/\n/)
+      .map((i) => i.split(","))
+      .map((i) => {
+        return {
+          x: Number.parseInt(i[0]),
+          y: Number.parseInt(i[1]),
+        } as Position;
+      });
+    const folds = baseData[1]
+      .trim()
+      .split(/\n/)
+      .map((i) => {
+        const foldRegex = /fold along ([xy])=(\d+)/.exec(i);
+        if (!foldRegex)
+          throw new Error(`Parsing error on fold instruction: ${i}`);
+        return {
+          direction: foldRegex[1],
+          position: Number.parseInt(foldRegex[2]),
+        } as FoldInstruction;
+      });
+
+    return [coords, folds];
+  }
+
+  FoldPaper(
+    startingSheet: Position[],
+    folds: FoldInstruction[],
+    iterations?: number
+  ) {
+    const workingSheet = startingSheet.map((i) => {
+      return { x: i.x, y: i.y } as Position;
+    });
+
+    for (
+      let x = 0;
+      x < (iterations === undefined ? folds.length : iterations);
+      x++
+    ) {
+      const fold = folds[x];
+      for (const pos of workingSheet) {
+        const chkPos = fold.direction === "x" ? pos.x : pos.y;
+        if (chkPos > fold.position) {
+          const deltaPos = (chkPos - fold.position) * 2;
+          if (fold.direction === "x") pos.x -= deltaPos;
+          else pos.y -= deltaPos;
+        }
+      }
+    }
+
+    return workingSheet;
+  }
+
+  LayoutFoldedSheet(endingSheet: Position[]): boolean[][] {
+    const width = Math.max(...endingSheet.map((i) => i.x))+1;
+    const height = Math.max(...endingSheet.map((i) => i.y))+1;
+    //console.debug('Creating array with dimensions:', width, height)
+    const retval: boolean[][] = [];
+    for (let y = 0; y < height; y++) retval.push(Array(width).fill(false));
+    //console.debug('Height of new array:', retval.length);
+    //console.debug('Width of new array:', retval[0].length);
+
+    for (const pos of endingSheet) {
+      //console.debug('Setting position', pos.y, pos.x, 'to true')
+      retval[pos.y][pos.x] = true;
+    }
+
+    return retval;
+  }
+
+  async Day13Problem1(data: string) {
+    const [coords, folds] = this.ParseSheetAndFolds(data);
+    const foldedPaper = this.FoldPaper(coords, folds, 1);
+    //console.debug(foldedPaper);
+    const paperLayout = this.LayoutFoldedSheet(foldedPaper);
+    //console.debug(paperLayout.map(i => i.map(ii => ii ? '#' : '.').join('')).join('\n'));
+
+    return paperLayout.reduce(
+      (r, i) => r + i.reduce((rr, ii) => rr + (ii ? 1 : 0), 0),
+      0
+    );
+  }
+
+  async Day13Problem2(data: string) {
+    const [coords, folds] = this.ParseSheetAndFolds(data);
+    const foldedPaper = this.FoldPaper(coords, folds);
+    const paperLayout = this.LayoutFoldedSheet(foldedPaper);
+
+    return '\n' + paperLayout.map(i => i.map(ii => ii ? '#' : '.').join('')).join('\n');
   }
 }
