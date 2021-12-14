@@ -1,27 +1,26 @@
 import { get as httpsGet } from "https";
 
 const testData = null;
-/*const testData = `6,10
-0,14
-9,10
-0,3
-10,4
-4,11
-6,0
-6,12
-4,1
-0,13
-10,12
-3,4
-3,0
-8,4
-1,10
-2,14
-8,10
-9,0
+/*
+const testData = `NNCB
 
-fold along y=7
-fold along x=5`;*/
+CH -> B
+HH -> N
+CB -> H
+NH -> C
+HB -> C
+HC -> B
+HN -> C
+NN -> C
+BH -> H
+NC -> B
+NB -> B
+BN -> B
+BB -> N
+BC -> B
+CC -> N
+CN -> C`;
+*/
 
 // Day 4
 interface BingoBoard {
@@ -98,7 +97,8 @@ export default class Advent {
       [this.Day10Problem1, this.Day10Problem2],
       [this.Day11Problem1, this.Day11Problem2],
       [this.Day12Problem1, this.Day12Problem2],
-      [this.Day13Problem1, this.Day13Problem2]
+      [this.Day13Problem1, this.Day13Problem2],
+      [this.Day14Problem1, this.Day14Problem2],
     ];
   }
 
@@ -1029,8 +1029,8 @@ export default class Advent {
   }
 
   LayoutFoldedSheet(endingSheet: Position[]): boolean[][] {
-    const width = Math.max(...endingSheet.map((i) => i.x))+1;
-    const height = Math.max(...endingSheet.map((i) => i.y))+1;
+    const width = Math.max(...endingSheet.map((i) => i.x)) + 1;
+    const height = Math.max(...endingSheet.map((i) => i.y)) + 1;
     //console.debug('Creating array with dimensions:', width, height)
     const retval: boolean[][] = [];
     for (let y = 0; y < height; y++) retval.push(Array(width).fill(false));
@@ -1063,6 +1063,79 @@ export default class Advent {
     const foldedPaper = this.FoldPaper(coords, folds);
     const paperLayout = this.LayoutFoldedSheet(foldedPaper);
 
-    return '\n' + paperLayout.map(i => i.map(ii => ii ? '#' : '.').join('')).join('\n');
+    return (
+      "\n" +
+      paperLayout
+        .map((i) => i.map((ii) => (ii ? "#" : ".")).join(""))
+        .join("\n")
+    );
+  }
+
+  // Day 14
+  JoinPolymersV2(
+    startingString: string,
+    pairs: Record<string, string>,
+    steps: number
+  ) {
+    let pairCount: Record<string, number> = {};
+    for (const pair of Object.keys(pairs)) pairCount[pair] = 0;
+
+    for (let x = 0; x < startingString.length - 1; x++) {
+      const pair = startingString.substring(x, x + 2);
+      pairCount[pair]++;
+    }
+
+    for (let x = 0; x < steps; x++) {
+      const newPairCount: Record<string, number> = {};
+      for (const pair of Object.keys(pairs)) newPairCount[pair] = 0;
+
+      for (const [pair, count] of Object.entries(pairCount)) {
+        if (count === 0) continue;
+
+        for (const newPair of [pair[0] + pairs[pair], pairs[pair] + pair[1]])
+          newPairCount[newPair] += count;
+      }
+      pairCount = newPairCount;
+    }
+
+    const retval: Record<string, number> = { [startingString[0]]: 1 };
+    for (const [pair, count] of Object.entries(pairCount)) {
+      const polymerToCount = pair[1];
+      if (!retval[polymerToCount]) retval[polymerToCount] = count;
+      else retval[polymerToCount] += count;
+    }
+
+    return retval;
+  }
+
+  Day14(data: string, steps: number) {
+    const baseData = data.trim().split(/\n{2}/);
+    const pairs: Record<string, string> = {};
+    baseData[1]
+      .trim()
+      .split(/\n/)
+      .forEach((i) => {
+        const arrowSplit = i.split(" -> ");
+        pairs[arrowSplit[0]] = arrowSplit[1];
+      });
+
+    const polymerCount = this.JoinPolymersV2(baseData[0], pairs, steps);
+    const polymerEntries = Object.entries(polymerCount).sort(
+      (a, b) => a[1] - b[1]
+    );
+    const topPoly = polymerEntries.pop();
+    const bottomPoly = polymerEntries.shift();
+    if (!topPoly || !bottomPoly)
+      throw new Error("Undefined top/bottom polymer");
+
+    return topPoly[1] - bottomPoly[1];
+  }
+
+  async Day14Problem1(data: string) {
+    return this.Day14(data, 10);
+  }
+
+  async Day14Problem2(data: string) {
+    return this.Day14(data, 40);
   }
 }
