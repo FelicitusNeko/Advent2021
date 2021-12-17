@@ -7,7 +7,7 @@ import BITSReader, {
 } from "./BITSReader";
 
 const useTestData = false;
-const testData = `9C0141080250320F1802104A08`;
+const testData = `target area: x=20..30, y=-10..-5`;
 
 // Day 4
 interface BingoBoard {
@@ -86,8 +86,9 @@ export default class Advent {
       [this.Day12Problem1, this.Day12Problem2],
       [this.Day13Problem1, this.Day13Problem2],
       [this.Day14Problem1, this.Day14Problem2],
-      [this.Day15Problem1, this.Dummy],
+      [this.Dummy, this.Dummy],
       [this.Day16Problem1, this.Day16Problem2],
+      [this.Day17Problem1, this.Day17Problem2],
     ];
   }
 
@@ -1211,5 +1212,102 @@ export default class Advent {
       }
     };
     return packets.map(CalculatePackets).reduce((r, i) => r + i);
+  }
+
+  // Day 17
+  async Day17Problem1(data: string) {
+    const match =
+      /target area: x=(-?\d+)\.\.(-?\d+), y=(-?\d+)\.\.(-?\d+)/.exec(data);
+    if (!match) throw new Error("Invalid input data");
+    const [_x1, _x2, y1, y2] = match.slice(1).map((i) => Number.parseInt(i));
+
+    const bottomEdge = Math.min(y1, y2);
+    let retval = 0;
+    for (let y = 0; y < Math.abs(bottomEdge); y++) retval += y;
+    return retval;
+  }
+
+  async Day17Problem2(data: string) {
+    const match =
+      /target area: x=(-?\d+)\.\.(-?\d+), y=(-?\d+)\.\.(-?\d+)/.exec(data);
+    if (!match) throw new Error("Invalid input data");
+    const [x1, x2, y1, y2] = match.slice(1).map((i) => Number.parseInt(i));
+
+    const xValid: Record<number, number[]> = {};
+    const xRemainsValid: Record<number, number[]> = {};
+    const yValid: Record<number, number[]> = {};
+
+    const leftEdge = Math.min(x1, x2);
+    const rightEdge = Math.max(x1, x2);
+    const bottomEdge = Math.min(y1, y2);
+    const topEdge = Math.max(y1, y2);
+
+    const xmin = (() => {
+      let count = 0;
+      for (let x = 1; count < rightEdge; x++) {
+        count += x;
+        if (count >= leftEdge) return x;
+      }
+      throw new Error("No valid minimum X vel found");
+    })();
+
+    for (let xStartVel = xmin; xStartVel <= rightEdge; xStartVel++) {
+      let xPos = xStartVel;
+      for (let step = 1; step <= xStartVel && xPos <= rightEdge; step++) {
+        if (xPos >= leftEdge && xPos <= rightEdge) {
+          if (step + 1 === xStartVel) {
+            if (!xRemainsValid[step]) xRemainsValid[step] = [xStartVel];
+            else xRemainsValid[step].push(xStartVel);
+            break;
+          } else {
+            if (!xValid[step]) xValid[step] = [xStartVel];
+            else xValid[step].push(xStartVel);
+          }
+        }
+        xPos += xStartVel - step;
+      }
+    }
+
+    for (
+      let yStartVel = bottomEdge;
+      yStartVel <= Math.abs(bottomEdge);
+      yStartVel++
+    ) {
+      let yPos = yStartVel;
+      for (let step = 1; yPos >= bottomEdge; step++) {
+        if (yPos >= bottomEdge && yPos <= topEdge) {
+          if (!yValid[step]) yValid[step] = [yStartVel];
+          else yValid[step].push(yStartVel);
+        }
+        yPos += yStartVel - step;
+      }
+    }
+
+    const maxStep = Math.max(
+      ...Object.keys(xValid)
+        .concat(Object.keys(xRemainsValid))
+        .concat(Object.keys(yValid))
+        .map((i) => Number.parseInt(i))
+    );
+
+    const xCarryover: number[] = [];
+    const validVels: [number, number][] = [];
+
+    for (let x = 1; x <= maxStep; x++) {
+      if (xRemainsValid[x]) xCarryover.push(...xRemainsValid[x]);
+      if (xCarryover.length > 0) console.debug(x, xCarryover);
+      if ((!xValid[x] && xCarryover.length === 0) || !yValid[x]) continue;
+
+      for (const xvel of xCarryover.concat(xValid[x] ?? []))
+        for (const yvel of yValid[x]) validVels.push([xvel, yvel]);
+    }
+
+    const retval = new Set(
+      validVels
+        .sort((a, b) => (a[0] === b[0] ? a[1] - b[1] : a[0] - b[0]))
+        .map((i) => `${i[0]},${i[1]}`)
+    );
+
+    return [...retval].length;
   }
 }
