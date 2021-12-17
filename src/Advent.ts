@@ -1,26 +1,13 @@
 import { get as httpsGet } from "https";
+import BITSReader, {
+  BITSLiteralPacket,
+  BITSOperatorPacket,
+  BITSPacket,
+  BITSPacketType,
+} from "./BITSReader";
 
-const testData = null;
-/*
-const testData = `NNCB
-
-CH -> B
-HH -> N
-CB -> H
-NH -> C
-HB -> C
-HC -> B
-HN -> C
-NN -> C
-BH -> H
-NC -> B
-NB -> B
-BN -> B
-BB -> N
-BC -> B
-CC -> N
-CN -> C`;
-*/
+const useTestData = false;
+const testData = `9C0141080250320F1802104A08`;
 
 // Day 4
 interface BingoBoard {
@@ -58,7 +45,7 @@ interface FoldInstruction {
 }
 
 const getInput = (year: number, day: number) => {
-  if (testData !== null) return testData;
+  if (useTestData && testData !== null) return testData;
   const { USERAGENT, COOKIE } = process.env;
   const url = `https://adventofcode.com/${year}/day/${day}/input`;
   return new Promise<string>((f, r) => {
@@ -99,6 +86,8 @@ export default class Advent {
       [this.Day12Problem1, this.Day12Problem2],
       [this.Day13Problem1, this.Day13Problem2],
       [this.Day14Problem1, this.Day14Problem2],
+      [this.Day15Problem1, this.Dummy],
+      [this.Day16Problem1, this.Day16Problem2],
     ];
   }
 
@@ -1137,5 +1126,90 @@ export default class Advent {
 
   async Day14Problem2(data: string) {
     return this.Day14(data, 40);
+  }
+
+  // Day 15 (skipped)
+  async Day15Problem1(data: string) {
+    const map = data
+      .trim()
+      .split("\n")
+      .map((i) => i.split("").map((ii) => Number.parseInt(ii)));
+
+    const riskTotal: number[][] = [];
+    for (let y = 0; y < map.length; y++)
+      riskTotal.push(Array(map[y].length).fill(-1));
+
+    map[0][0] = riskTotal[0][0] = 0;
+    const maxIteraton = map.length + map[0].length;
+    for (let z = 1; z < maxIteraton; z++) {
+      for (let x = 0; x <= z; x++) {
+        const y = z - x;
+        if (x >= map[0].length || y >= map.length) continue;
+        const goDown = y === 0 ? Infinity : riskTotal[y - 1][x] + map[y][x];
+        const goRight = x === 0 ? Infinity : riskTotal[y][x - 1] + map[y][x];
+        riskTotal[y][x] = Math.min(goDown, goRight);
+      }
+    }
+
+    return riskTotal[map.length - 1][map[0].length - 1];
+    // Incorrect: 404 (too high)
+  }
+
+  // Day 16
+  async Day16Problem1(data: string) {
+    const bitsReader = new BITSReader(data.trim());
+    const packets: BITSPacket[] = [];
+    let nextPacket = bitsReader.readNextPacket();
+    while (nextPacket) {
+      packets.push(nextPacket);
+      nextPacket = bitsReader.readNextPacket();
+    }
+
+    const GetPacketVersion = (acc: number, packet: BITSPacket): number => {
+      let retval = packet.version;
+      if (packet.packetType !== BITSPacketType.Literal)
+        retval += (packet as BITSOperatorPacket).subpackets.reduce(
+          GetPacketVersion,
+          0
+        );
+      return retval + acc;
+    };
+    return packets.reduce(GetPacketVersion, 0);
+  }
+
+  async Day16Problem2(data: string) {
+    const bitsReader = new BITSReader(data.trim());
+    const packets: BITSPacket[] = [];
+    let nextPacket = bitsReader.readNextPacket();
+    while (nextPacket) {
+      packets.push(nextPacket);
+      nextPacket = bitsReader.readNextPacket();
+    }
+
+    const CalculatePackets = (packet: BITSPacket): number => {
+      if (packet.packetType === BITSPacketType.Literal)
+        return (packet as BITSLiteralPacket).value;
+      else {
+        const opPacket = packet as BITSOperatorPacket;
+        const data = opPacket.subpackets.map(CalculatePackets);
+        switch (packet.packetType) {
+          case BITSPacketType.AddOp:
+            return data.reduce((r, i) => r + i);
+          case BITSPacketType.MultOp:
+            return data.reduce((r, i) => r * i);
+          case BITSPacketType.MinOp:
+            return Math.min(...data);
+          case BITSPacketType.MaxOp:
+            return Math.max(...data);
+          case BITSPacketType.GTOp:
+            return data[0] > data[1] ? 1 : 0;
+          case BITSPacketType.LTOp:
+            return data[0] < data[1] ? 1 : 0;
+          case BITSPacketType.EqOp:
+            return data[0] === data[1] ? 1 : 0;
+        }
+      }
+    };
+    return packets.map(CalculatePackets).reduce((r, i) => r + i);
   }
 }
