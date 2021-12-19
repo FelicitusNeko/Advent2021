@@ -7,7 +7,16 @@ import BITSReader, {
 } from "./BITSReader";
 
 const useTestData = false;
-const testData = `target area: x=20..30, y=-10..-5`;
+const testData = `[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]
+[[[5,[2,8]],4],[5,[[9,9],0]]]
+[6,[[[6,2],[5,6]],[[7,6],[4,7]]]]
+[[[6,[0,7]],[0,9]],[4,[9,[9,0]]]]
+[[[7,[6,4]],[3,[1,3]]],[[[5,5],1],9]]
+[[6,[[7,3],[3,2]]],[[[3,8],[5,7]],4]]
+[[[[5,4],[7,7]],8],[[8,3],8]]
+[[9,3],[[9,9],[6,[4,9]]]]
+[[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]
+[[[[5,2],5],[8,[3,7]]],[[5,[7,5]],[4,4]]]`;
 
 // Day 4
 interface BingoBoard {
@@ -42,6 +51,13 @@ interface Position {
 interface FoldInstruction {
   direction: string;
   position: number;
+}
+
+// Day 18
+type ParsedEntity = number | [ParsedEntity, ParsedEntity];
+interface SnailfishNumber {
+  value: number;
+  pairMember: string[];
 }
 
 const getInput = (year: number, day: number) => {
@@ -89,6 +105,7 @@ export default class Advent {
       [this.Dummy, this.Dummy],
       [this.Day16Problem1, this.Day16Problem2],
       [this.Day17Problem1, this.Day17Problem2],
+      [this.Day18Problem1, this.Day18Problem2],
     ];
   }
 
@@ -1219,7 +1236,7 @@ export default class Advent {
     const match =
       /target area: x=(-?\d+)\.\.(-?\d+), y=(-?\d+)\.\.(-?\d+)/.exec(data);
     if (!match) throw new Error("Invalid input data");
-    const [_x1, _x2, y1, y2] = match.slice(1).map((i) => Number.parseInt(i));
+    const [y1, y2] = match.slice(3).map((i) => Number.parseInt(i));
 
     const bottomEdge = Math.min(y1, y2);
     let retval = 0;
@@ -1309,5 +1326,183 @@ export default class Advent {
     );
 
     return [...retval].length;
+  }
+
+  // Day 18
+  ParseToSnailfish(parsedLine: ParsedEntity) {
+    const retval: SnailfishNumber[] = [];
+    const InnerParseToSnailfish = (
+      data: ParsedEntity,
+      curDepth: string[] = []
+    ) => {
+      if (!Array.isArray(data))
+        throw new Error("Tried to call ParseToSnailfish on non-array element");
+      const lr = [["l"], ["r"]];
+      for (const x in lr) {
+        if (Array.isArray(data[x]))
+          InnerParseToSnailfish(data[x], lr[x].concat(curDepth));
+        else
+          retval.push({
+            value: data[x] as number,
+            pairMember: lr[x].concat(curDepth),
+          });
+      }
+    };
+    InnerParseToSnailfish(parsedLine);
+    return retval;
+  }
+
+  ProcessSnailfishLine(process: SnailfishNumber[]) {
+    let done = false;
+    while (!done) {
+      done = true;
+      for (const x in process) {
+        const nx = Number.parseInt(x);
+        const element = process[nx];
+        if (element.pairMember.length >= 5) {
+          console.assert(
+            element.pairMember[0] === "l",
+            "Exploding element detected not the left side",
+            element
+          );
+          const explosion = process.splice(nx, 2, {
+            value: 0,
+            pairMember: element.pairMember.slice(1),
+          });
+          if (nx > 0) process[nx - 1].value += explosion[0].value;
+          if (nx < process.length - 1)
+            process[nx + 1].value += explosion[1].value;
+
+          done = false;
+          break;
+        }
+      }
+      if (!done) continue;
+
+      for (const x in process) {
+        const nx = Number.parseInt(x);
+        const element = process[nx];
+
+        if (element.value >= 10) {
+          process.splice(
+            nx,
+            1,
+            {
+              value: Math.floor(element.value / 2),
+              pairMember: ["l"].concat(element.pairMember.slice()),
+            },
+            {
+              value: Math.ceil(element.value / 2),
+              pairMember: ["r"].concat(element.pairMember.slice()),
+            }
+          );
+          console.assert(
+            process[nx].value + process[nx + 1].value === element.value,
+            "Result of split not equal to original element"
+          );
+          console.assert(
+            process[nx].pairMember[0] === "l",
+            "Left value of split not indicated as left value"
+          );
+
+          done = false;
+          break;
+        }
+      }
+    }
+    return process;
+  }
+
+  OutputSnailfishAsString(line: SnailfishNumber[]) {
+    let retval = "";
+    let lastLevel = 0;
+    for (const element of line) {
+      for (; lastLevel < element.pairMember.length; lastLevel++) retval += "[";
+      retval += element.value;
+      for (const scanRight of element.pairMember)
+        if (scanRight === "r") {
+          lastLevel--;
+          retval += "]";
+        } else {
+          retval += ",";
+          break;
+        }
+    }
+    while (0 < lastLevel--) retval += "]";
+    return retval;
+  }
+
+  ReduceSnailfish(data: [ParsedEntity, ParsedEntity]): number {
+    return (
+      (typeof data[0] === "number" ? data[0] : this.ReduceSnailfish(data[0])) *
+        3 +
+      (typeof data[1] === "number" ? data[1] : this.ReduceSnailfish(data[1])) *
+        2
+    );
+  }
+
+  async Day18Problem1(data: string) {
+    const parsedLines: ParsedEntity[] = data
+      .trim()
+      .split(/\n/)
+      .map((i) => JSON.parse(i));
+    const lines: SnailfishNumber[][] = [];
+
+    for (const parsedLine of parsedLines)
+      lines.push(this.ParseToSnailfish(parsedLine));
+
+    const process: SnailfishNumber[] = [];
+    while (lines.length > 0) {
+      const firstOne = parsedLines.length === lines.length;
+      const nextLine = lines.shift();
+      if (nextLine === undefined) break;
+
+      if (!firstOne) {
+        for (const element of process) element.pairMember.push("l");
+        for (const element of nextLine) element.pairMember.push("r");
+      }
+
+      process.push(...nextLine);
+      this.ProcessSnailfishLine(process);
+    }
+
+    const sum: [ParsedEntity, ParsedEntity] = JSON.parse(
+      this.OutputSnailfishAsString(process)
+    );
+
+    return this.ReduceSnailfish(sum);
+  }
+
+  async Day18Problem2(data: string) {
+    const parsedLines: ParsedEntity[] = data
+      .trim()
+      .split(/\n/)
+      .map((i) => JSON.parse(i));
+    const lines: SnailfishNumber[][] = [];
+
+    for (const parsedLine of parsedLines)
+      lines.push(this.ParseToSnailfish(parsedLine));
+
+    let retval = 0;
+    for (let x = 0; x < lines.length; x++)
+      for (let y = 0; y < lines.length; y++) {
+        if (x === y) continue;
+        const process: SnailfishNumber[] = [];
+        for (const { value, pairMember } of lines[x])
+          process.push({ value, pairMember: pairMember.concat(["l"]) });
+        for (const { value, pairMember } of lines[y])
+          process.push({ value, pairMember: pairMember.concat(["r"]) });
+
+        this.ProcessSnailfishLine(process);
+
+        retval = Math.max(
+          retval,
+          this.ReduceSnailfish(
+            JSON.parse(this.OutputSnailfishAsString(process))
+          )
+        );
+      }
+
+    return retval;
   }
 }
