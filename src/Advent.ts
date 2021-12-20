@@ -7,16 +7,142 @@ import BITSReader, {
 } from "./BITSReader";
 
 const useTestData = false;
-const testData = `[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]
-[[[5,[2,8]],4],[5,[[9,9],0]]]
-[6,[[[6,2],[5,6]],[[7,6],[4,7]]]]
-[[[6,[0,7]],[0,9]],[4,[9,[9,0]]]]
-[[[7,[6,4]],[3,[1,3]]],[[[5,5],1],9]]
-[[6,[[7,3],[3,2]]],[[[3,8],[5,7]],4]]
-[[[[5,4],[7,7]],8],[[8,3],8]]
-[[9,3],[[9,9],[6,[4,9]]]]
-[[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]
-[[[[5,2],5],[8,[3,7]]],[[5,[7,5]],[4,4]]]`;
+const testData = `--- scanner 0 ---
+404,-588,-901
+528,-643,409
+-838,591,734
+390,-675,-793
+-537,-823,-458
+-485,-357,347
+-345,-311,381
+-661,-816,-575
+-876,649,763
+-618,-824,-621
+553,345,-567
+474,580,667
+-447,-329,318
+-584,868,-557
+544,-627,-890
+564,392,-477
+455,729,728
+-892,524,684
+-689,845,-530
+423,-701,434
+7,-33,-71
+630,319,-379
+443,580,662
+-789,900,-551
+459,-707,401
+
+--- scanner 1 ---
+686,422,578
+605,423,415
+515,917,-361
+-336,658,858
+95,138,22
+-476,619,847
+-340,-569,-846
+567,-361,727
+-460,603,-452
+669,-402,600
+729,430,532
+-500,-761,534
+-322,571,750
+-466,-666,-811
+-429,-592,574
+-355,545,-477
+703,-491,-529
+-328,-685,520
+413,935,-424
+-391,539,-444
+586,-435,557
+-364,-763,-893
+807,-499,-711
+755,-354,-619
+553,889,-390
+
+--- scanner 2 ---
+649,640,665
+682,-795,504
+-784,533,-524
+-644,584,-595
+-588,-843,648
+-30,6,44
+-674,560,763
+500,723,-460
+609,671,-379
+-555,-800,653
+-675,-892,-343
+697,-426,-610
+578,704,681
+493,664,-388
+-671,-858,530
+-667,343,800
+571,-461,-707
+-138,-166,112
+-889,563,-600
+646,-828,498
+640,759,510
+-630,509,768
+-681,-892,-333
+673,-379,-804
+-742,-814,-386
+577,-820,562
+
+--- scanner 3 ---
+-589,542,597
+605,-692,669
+-500,565,-823
+-660,373,557
+-458,-679,-417
+-488,449,543
+-626,468,-788
+338,-750,-386
+528,-832,-391
+562,-778,733
+-938,-730,414
+543,643,-506
+-524,371,-870
+407,773,750
+-104,29,83
+378,-903,-323
+-778,-728,485
+426,699,580
+-438,-605,-362
+-469,-447,-387
+509,732,623
+647,635,-688
+-868,-804,481
+614,-800,639
+595,780,-596
+
+--- scanner 4 ---
+727,592,562
+-293,-554,779
+441,611,-461
+-714,465,-776
+-743,427,-804
+-660,-479,-426
+832,-632,460
+927,-485,-438
+408,393,-506
+466,436,-512
+110,16,151
+-258,-428,682
+-393,719,612
+-211,-452,876
+808,-476,-593
+-575,615,604
+-485,667,467
+-680,325,-822
+-627,-443,-432
+872,-547,-609
+833,512,582
+807,604,487
+839,-516,451
+891,-625,532
+-652,-548,-490
+30,-46,-14`;
 
 // Day 4
 interface BingoBoard {
@@ -44,7 +170,7 @@ interface CaveNode {
 }
 
 // Day 13
-interface Position {
+interface Position2D {
   x: number;
   y: number;
 }
@@ -58,6 +184,17 @@ type ParsedEntity = number | [ParsedEntity, ParsedEntity];
 interface SnailfishNumber {
   value: number;
   pairMember: string[];
+}
+
+// Day 19
+interface Position3D {
+  x: number;
+  y: number;
+  z: number;
+}
+interface Beacon {
+  pos: Position3D;
+  relBeaconDistance: number[][];
 }
 
 const getInput = (year: number, day: number) => {
@@ -106,6 +243,8 @@ export default class Advent {
       [this.Day16Problem1, this.Day16Problem2],
       [this.Day17Problem1, this.Day17Problem2],
       [this.Day18Problem1, this.Day18Problem2],
+      [this.Day19Problem1, this.Day19Problem2],
+      [this.Day20Problem1, this.Day20Problem2],
     ];
   }
 
@@ -979,7 +1118,7 @@ export default class Advent {
   }
 
   // Day 13
-  ParseSheetAndFolds(data: string): [Position[], FoldInstruction[]] {
+  ParseSheetAndFolds(data: string): [Position2D[], FoldInstruction[]] {
     const baseData = data.trim().split(/\n{2}/);
     const coords = baseData[0]
       .trim()
@@ -989,7 +1128,7 @@ export default class Advent {
         return {
           x: Number.parseInt(i[0]),
           y: Number.parseInt(i[1]),
-        } as Position;
+        } as Position2D;
       });
     const folds = baseData[1]
       .trim()
@@ -1008,12 +1147,12 @@ export default class Advent {
   }
 
   FoldPaper(
-    startingSheet: Position[],
+    startingSheet: Position2D[],
     folds: FoldInstruction[],
     iterations?: number
   ) {
     const workingSheet = startingSheet.map((i) => {
-      return { x: i.x, y: i.y } as Position;
+      return { x: i.x, y: i.y } as Position2D;
     });
 
     for (
@@ -1035,7 +1174,7 @@ export default class Advent {
     return workingSheet;
   }
 
-  LayoutFoldedSheet(endingSheet: Position[]): boolean[][] {
+  LayoutFoldedSheet(endingSheet: Position2D[]): boolean[][] {
     const width = Math.max(...endingSheet.map((i) => i.x)) + 1;
     const height = Math.max(...endingSheet.map((i) => i.y)) + 1;
     //console.debug('Creating array with dimensions:', width, height)
@@ -1504,5 +1643,464 @@ export default class Advent {
       }
 
     return retval;
+  }
+
+  // Day 19
+  private readonly beaconTransformers: ((pos: Position3D) => Position3D)[] = [
+    (pos) => pos,
+    (pos) => {
+      return { x: -pos.x, y: pos.y, z: pos.z };
+    },
+    (pos) => {
+      return { x: pos.x, y: -pos.y, z: pos.z };
+    },
+    (pos) => {
+      return { x: -pos.x, y: -pos.y, z: pos.z };
+    },
+    (pos) => {
+      return { x: pos.x, y: pos.y, z: -pos.z };
+    },
+    (pos) => {
+      return { x: -pos.x, y: pos.y, z: -pos.z };
+    },
+    (pos) => {
+      return { x: pos.x, y: -pos.y, z: -pos.z };
+    },
+    (pos) => {
+      return { x: -pos.x, y: -pos.y, z: -pos.z };
+    },
+
+    (pos) => {
+      return { x: pos.y, y: pos.x, z: pos.z };
+    },
+    (pos) => {
+      return { x: -pos.y, y: pos.x, z: pos.z };
+    },
+    (pos) => {
+      return { x: pos.y, y: -pos.x, z: pos.z };
+    },
+    (pos) => {
+      return { x: -pos.y, y: -pos.x, z: pos.z };
+    },
+    (pos) => {
+      return { x: pos.y, y: pos.x, z: -pos.z };
+    },
+    (pos) => {
+      return { x: -pos.y, y: pos.x, z: -pos.z };
+    },
+    (pos) => {
+      return { x: pos.y, y: -pos.x, z: -pos.z };
+    },
+    (pos) => {
+      return { x: -pos.y, y: -pos.x, z: -pos.z };
+    },
+
+    (pos) => {
+      return { x: pos.z, y: pos.y, z: pos.x };
+    },
+    (pos) => {
+      return { x: -pos.z, y: pos.y, z: pos.x };
+    },
+    (pos) => {
+      return { x: pos.z, y: -pos.y, z: pos.x };
+    },
+    (pos) => {
+      return { x: -pos.z, y: -pos.y, z: pos.x };
+    },
+    (pos) => {
+      return { x: pos.z, y: pos.y, z: -pos.x };
+    },
+    (pos) => {
+      return { x: -pos.z, y: pos.y, z: -pos.x };
+    },
+    (pos) => {
+      return { x: pos.z, y: -pos.y, z: -pos.x };
+    },
+    (pos) => {
+      return { x: -pos.z, y: -pos.y, z: -pos.x };
+    },
+
+    (pos) => {
+      return { x: pos.x, y: pos.z, z: pos.y };
+    },
+    (pos) => {
+      return { x: -pos.x, y: pos.z, z: pos.y };
+    },
+    (pos) => {
+      return { x: pos.x, y: -pos.z, z: pos.y };
+    },
+    (pos) => {
+      return { x: -pos.x, y: -pos.z, z: pos.y };
+    },
+    (pos) => {
+      return { x: pos.x, y: pos.z, z: -pos.y };
+    },
+    (pos) => {
+      return { x: -pos.x, y: pos.z, z: -pos.y };
+    },
+    (pos) => {
+      return { x: pos.x, y: -pos.z, z: -pos.y };
+    },
+    (pos) => {
+      return { x: -pos.x, y: -pos.z, z: -pos.y };
+    },
+
+    (pos) => {
+      return { x: pos.y, y: pos.z, z: pos.x };
+    },
+    (pos) => {
+      return { x: -pos.y, y: pos.z, z: pos.x };
+    },
+    (pos) => {
+      return { x: pos.y, y: -pos.z, z: pos.x };
+    },
+    (pos) => {
+      return { x: -pos.y, y: -pos.z, z: pos.x };
+    },
+    (pos) => {
+      return { x: pos.y, y: pos.z, z: -pos.x };
+    },
+    (pos) => {
+      return { x: -pos.y, y: pos.z, z: -pos.x };
+    },
+    (pos) => {
+      return { x: pos.y, y: -pos.z, z: -pos.x };
+    },
+    (pos) => {
+      return { x: -pos.y, y: -pos.z, z: -pos.x };
+    },
+
+    (pos) => {
+      return { x: pos.z, y: pos.x, z: pos.y };
+    },
+    (pos) => {
+      return { x: -pos.z, y: pos.x, z: pos.y };
+    },
+    (pos) => {
+      return { x: pos.z, y: -pos.x, z: pos.y };
+    },
+    (pos) => {
+      return { x: -pos.z, y: -pos.x, z: pos.y };
+    },
+    (pos) => {
+      return { x: pos.z, y: pos.x, z: -pos.y };
+    },
+    (pos) => {
+      return { x: -pos.z, y: pos.x, z: -pos.y };
+    },
+    (pos) => {
+      return { x: pos.z, y: -pos.x, z: -pos.y };
+    },
+    (pos) => {
+      return { x: -pos.z, y: -pos.x, z: -pos.y };
+    },
+  ];
+
+  NumberWang(lhs: number[], rhs: number[]) {
+    if (lhs.length !== rhs.length) return false;
+    else
+      for (let x = 0; x < lhs.length; x++) if (lhs[x] !== rhs[x]) return false;
+    return true;
+  }
+
+  AddToBigMap(
+    bigMap: Beacon[],
+    pos: Position3D,
+    rel: Position3D = { x: 0, y: 0, z: 0 },
+    order: (pos: Position3D) => Position3D = (pos) => pos
+  ) {
+    const modPos = order(pos);
+    const retval: Beacon = {
+      pos: {
+        x: modPos.x + rel.x,
+        y: modPos.y + rel.y,
+        z: modPos.z + rel.z,
+      },
+      relBeaconDistance: [],
+    };
+
+    for (const beacon of bigMap) {
+      if (
+        beacon.pos.x === retval.pos.x &&
+        beacon.pos.y === retval.pos.y &&
+        beacon.pos.z === retval.pos.z
+      )
+        return false;
+    }
+
+    for (const beacon of bigMap) {
+      const relval = [
+        Math.abs(retval.pos.x - beacon.pos.x),
+        Math.abs(retval.pos.y - beacon.pos.y),
+        Math.abs(retval.pos.z - beacon.pos.z),
+      ].sort((a, b) => a - b);
+
+      retval.relBeaconDistance.push(relval);
+      beacon.relBeaconDistance.push(relval);
+    }
+
+    bigMap.push(retval);
+    return true;
+  }
+
+  CorrelateScannerBeacons(scanner: Beacon[]) {
+    for (let x = 0; x < scanner.length - 1; x++) {
+      for (let y = x; y < scanner.length; y++) {
+        const beaconX = scanner[x],
+          beaconY = scanner[y];
+        const relpos = [
+          Math.abs(beaconX.pos.x - beaconY.pos.x),
+          Math.abs(beaconX.pos.y - beaconY.pos.y),
+          Math.abs(beaconX.pos.z - beaconY.pos.z),
+        ].sort((a, b) => a - b);
+
+        beaconX.relBeaconDistance.push(relpos);
+        beaconY.relBeaconDistance.push(relpos);
+      }
+    }
+  }
+
+  CorrelateScanner(bigMap: Beacon[], scanner: Beacon[]) {
+    const matchingPairs: [Beacon, Beacon][] = [];
+    for (const beaconX of bigMap)
+      for (const beaconY of scanner) {
+        let posMatches = 0;
+        for (const relBeaconX of beaconX.relBeaconDistance)
+          for (const relBeaconY of beaconY.relBeaconDistance) {
+            if (this.NumberWang(relBeaconX, relBeaconY)) {
+              posMatches++;
+              break;
+            }
+          }
+        if (posMatches >= 11) {
+          matchingPairs.push([beaconX, beaconY]);
+        }
+        if (matchingPairs.length >= 2) break;
+      }
+
+    if (matchingPairs.length >= 2) {
+      const firstSet = matchingPairs.map((i) => i[0].pos);
+      for (const modifier of this.beaconTransformers) {
+        const secondSet = matchingPairs.map((i) => modifier(i[1].pos));
+        const relPos = firstSet.map((i, x) => {
+          return {
+            x: i.x - secondSet[x].x,
+            y: i.y - secondSet[x].y,
+            z: i.z - secondSet[x].z,
+          };
+        });
+        if (
+          relPos[0].x === relPos[1].x &&
+          relPos[0].y === relPos[1].y &&
+          relPos[0].z === relPos[1].z
+        ) {
+          for (const beacon of scanner)
+            this.AddToBigMap(bigMap, beacon.pos, relPos[0], modifier);
+
+          return relPos[0];
+        }
+      }
+    }
+    return null;
+  }
+
+  async Day19Problem1(data: string) {
+    const scannerData: Beacon[][] = data
+      .trim()
+      .split(/\n\n/)
+      .map((i) =>
+        i
+          .split(/\n/)
+          .slice(1)
+          .map((ii) => {
+            const [x, y, z] = ii.split(",");
+            return {
+              pos: {
+                x: Number.parseInt(x),
+                y: Number.parseInt(y),
+                z: Number.parseInt(z),
+              },
+              relBeaconDistance: [],
+            } as Beacon;
+          })
+      );
+
+    const bigMap: Beacon[] = [];
+
+    const firstScanner = scannerData.shift();
+    if (!firstScanner) throw new Error("No scanners in data set");
+    for (const beacon of firstScanner) this.AddToBigMap(bigMap, beacon.pos);
+
+    for (const scanner of scannerData) this.CorrelateScannerBeacons(scanner);
+
+    let done = false;
+    let workingSet = scannerData.slice(0);
+    while (!done) {
+      const matchedScanners: Beacon[][] = [];
+      done = true;
+
+      for (const scanner of workingSet) {
+        if (this.CorrelateScanner(bigMap, scanner)) {
+          done = false;
+          matchedScanners.push(scanner);
+        }
+      }
+
+      workingSet = workingSet.filter((i) => !matchedScanners.includes(i));
+    }
+    if (workingSet.length > 0)
+      throw new Error(`${workingSet.length} unmatched scanner(s)`);
+
+    return bigMap.length;
+  }
+
+  async Day19Problem2(data: string) {
+    const scannerData: Beacon[][] = data
+      .trim()
+      .split(/\n\n/)
+      .map((i) =>
+        i
+          .split(/\n/)
+          .slice(1)
+          .map((ii) => {
+            const [x, y, z] = ii.split(",");
+            return {
+              pos: {
+                x: Number.parseInt(x),
+                y: Number.parseInt(y),
+                z: Number.parseInt(z),
+              },
+              relBeaconDistance: [],
+            } as Beacon;
+          })
+      );
+
+    const bigMap: Beacon[] = [];
+    const scannerLocations: Position3D[] = [{ x: 0, y: 0, z: 0 }];
+
+    const firstScanner = scannerData.shift();
+    if (!firstScanner) throw new Error("No scanners in data set");
+    for (const beacon of firstScanner) this.AddToBigMap(bigMap, beacon.pos);
+
+    for (const scanner of scannerData) this.CorrelateScannerBeacons(scanner);
+
+    let done = false;
+    let workingSet = scannerData.slice(0);
+    while (!done) {
+      const matchedScanners: Beacon[][] = [];
+      done = true;
+
+      for (const scanner of workingSet) {
+        const relPos = this.CorrelateScanner(bigMap, scanner);
+        if (relPos) {
+          done = false;
+          scannerLocations.push(relPos);
+          matchedScanners.push(scanner);
+        }
+      }
+
+      workingSet = workingSet.filter((i) => !matchedScanners.includes(i));
+    }
+    if (workingSet.length > 0)
+      throw new Error(`${workingSet.length} unmatched scanner(s)`);
+
+    let longestManhattan = 0;
+    for (let x = 0; x < scannerLocations.length - 1; x++)
+      for (let y = x; y < scannerLocations.length; y++) {
+        const scannerX = scannerLocations[x],
+          scannerY = scannerLocations[y];
+        longestManhattan = Math.max(
+          longestManhattan,
+          Math.abs(scannerX.x - scannerY.x) +
+            Math.abs(scannerX.y - scannerY.y) +
+            Math.abs(scannerX.z - scannerY.z)
+        );
+      }
+
+    return longestManhattan;
+  }
+
+  // Day 20
+  ZoomAndEnhance(
+    enhanceData: boolean[],
+    map: boolean[][],
+    outside: boolean
+  ): [boolean[][], boolean] {
+    const retval: boolean[][] = [];
+    for (let y = 0; y < map.length + 2; y++) {
+      const row: boolean[] = [];
+      for (let x = 0; x < map[0].length + 2; x++) row.push(false);
+      retval.push(row);
+    }
+
+    for (let y = 0; y < retval.length; y++)
+      for (let x = 0; x < retval[0].length; x++) {
+        let refPoint = 0;
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            refPoint <<= 1;
+            if (
+              y + dy > 0 &&
+              x + dx > 0 &&
+              y - 1 + dy < map.length &&
+              x - 1 + dx < map[0].length
+            ) {
+              if (map[y - 1 + dy][x - 1 + dx]) refPoint |= 1;
+            } else refPoint |= outside ? 1 : 0;
+          }
+        console.assert(
+          refPoint < enhanceData.length,
+          "Reference point out of bounds (was %d, max %d)",
+          refPoint,
+          enhanceData.length
+        );
+        retval[y][x] = enhanceData[refPoint];
+      }
+
+    //console.debug(retval);
+    return [retval, enhanceData[0] !== outside];
+  }
+
+  Day20(data: string, iterations: number) {
+    const baseData = data.trim().split(/\n\n/);
+    const enhanceData = baseData[0].split("").map((i) => i === "#");
+    const startingMap = baseData[1]
+      .split(/\n/)
+      .map((i) => i.split("").map((i) => i === "#"));
+
+    let workingMap = startingMap,
+      outside = false;
+    for (let x = 1; x <= iterations; x++) {
+      [workingMap, outside] = this.ZoomAndEnhance(
+        enhanceData,
+        workingMap,
+        outside
+      );
+      console.assert(
+        workingMap.length === startingMap.length + x * 2,
+        "Incorrect working map height"
+      );
+      console.assert(
+        workingMap[0].length === startingMap[0].length + x * 2,
+        "Incorrect working map height"
+      );
+    }
+
+    // console.debug(
+    //   workingMap.map((i) => i.map((ii) => (ii ? "#" : ".")).join("")).join("\n")
+    // );
+
+    return workingMap.reduce(
+      (r, i) => r + i.reduce((rr, ii) => (ii ? ++rr : rr), 0),
+      0
+    );
+  }
+
+  async Day20Problem1(data: string) {
+    return this.Day20(data, 2);
+  }
+
+  async Day20Problem2(data: string) {
+    return this.Day20(data, 50);
   }
 }
