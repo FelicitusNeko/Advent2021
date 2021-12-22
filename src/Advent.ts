@@ -7,8 +7,26 @@ import BITSReader, {
 } from "./BITSReader";
 
 const useTestData = false;
-const testData = `Player 1 starting position: 4
-Player 2 starting position: 8`;
+const testData = `on x=-20..26,y=-36..17,z=-47..7
+on x=-20..33,y=-21..23,z=-26..28
+on x=-22..28,y=-29..23,z=-38..16
+on x=-46..7,y=-6..46,z=-50..-1
+on x=-49..1,y=-3..46,z=-24..28
+on x=2..47,y=-22..22,z=-23..27
+on x=-27..23,y=-28..26,z=-21..29
+on x=-39..5,y=-6..47,z=-3..44
+on x=-30..21,y=-8..43,z=-13..34
+on x=-22..26,y=-27..20,z=-29..19
+off x=-48..-32,y=26..41,z=-47..-37
+on x=-12..35,y=6..50,z=-50..-2
+off x=-48..-32,y=-32..-16,z=-15..-5
+on x=-18..26,y=-33..15,z=-7..46
+off x=-40..-22,y=-38..-28,z=23..41
+on x=-16..35,y=-41..10,z=-47..6
+off x=-32..-23,y=11..30,z=-14..3
+on x=-49..-5,y=-3..45,z=-29..18
+off x=18..30,y=-20..-8,z=-3..13
+on x=-41..9,y=-7..43,z=-33..15`;
 
 // Day 4
 interface BingoBoard {
@@ -63,6 +81,15 @@ interface Beacon {
   relBeaconDistance: number[][];
 }
 
+// Day 22
+type Range = [number, number];
+interface BootCubeV3 {
+  state: boolean;
+  rangeX: Range;
+  rangeY: Range;
+  rangeZ: Range;
+}
+
 // General utility
 const getInput = (year: number, day: number) => {
   if (useTestData && testData !== null) return testData;
@@ -113,6 +140,7 @@ export default class Advent {
       [this.Day19Problem1, this.Day19Problem2],
       [this.Day20Problem1, this.Day20Problem2],
       [this.Day21Problem1, this.Day21Problem2],
+      [this.Day22Problem1, this.Day22Problem2],
     ];
   }
 
@@ -2032,25 +2060,139 @@ export default class Advent {
       splits: number[],
       curPlayer: number
     ) => {
-      for (const roll of Object.keys(odds).map(i => Number.parseInt(i))) {
+      for (const roll of Object.keys(odds).map((i) => Number.parseInt(i))) {
         const newScore = score.slice();
         const newPos = pos.slice();
         const newSplits = splits.slice();
-        
+
         newPos[curPlayer] = (newPos[curPlayer] + roll) % 10;
         newScore[curPlayer] += newPos[curPlayer] + 1;
         newSplits.push(odds[roll]);
 
         if (newScore[curPlayer] >= 21) {
-          wins[curPlayer] += newSplits.reduce((r,i) => r*i);
+          wins[curPlayer] += newSplits.reduce((r, i) => r * i);
         } else {
           RecurseReality(newScore, newPos, newSplits, curPlayer === 0 ? 1 : 0);
         }
-        if (splits.length === 0) console.debug('Wins so far:', wins);
+        if (splits.length === 0) console.debug("Wins so far:", wins);
       }
     };
-    RecurseReality([0,0], startPos.slice().map(i => i-1), [], 0);
+    RecurseReality(
+      [0, 0],
+      startPos.slice().map((i) => i - 1),
+      [],
+      0
+    );
 
     return Math.max(...wins);
+  }
+
+  // Day 22
+  async Day22Problem1(data: string) {
+    const cubes: BootCubeV3[] = data
+      .trim()
+      .split(/\n/)
+      .map((i) => {
+        const cubeRegex =
+          /(o(?:n|ff)) x=(-?\d+)\.\.(-?\d+),y=(-?\d+)\.\.(-?\d+),z=(-?\d+)\.\.(-?\d+)/.exec(
+            i
+          );
+        if (!cubeRegex) throw new Error("Error reading boot cube data");
+        const [x1, x2, y1, y2, z1, z2] = cubeRegex
+          .slice(2)
+          .map((i) => Number.parseInt(i));
+        return {
+          state: cubeRegex[1] === "on",
+          rangeX: [x1, x2].sort((a, b) => a - b) as Range,
+          rangeY: [y1, y2].sort((a, b) => a - b) as Range,
+          rangeZ: [z1, z2].sort((a, b) => a - b) as Range,
+        };
+      });
+
+    const nodes = new Set<string>();
+
+    for (const { state, rangeX, rangeY, rangeZ } of cubes)
+      for (let x = Math.max(rangeX[0], -50); x <= Math.min(rangeX[1], 50); x++)
+        for (
+          let y = Math.max(rangeY[0], -50);
+          y <= Math.min(rangeY[1], 50);
+          y++
+        )
+          for (
+            let z = Math.max(rangeZ[0], -50);
+            z <= Math.min(rangeZ[1], 50);
+            z++
+          )
+            if (state) nodes.add(`${x}|${y}|${z}`);
+            else nodes.delete(`${x}|${y}|${z}`);
+
+    return nodes.size;
+  }
+
+  async Day22Problem2(data: string) {
+    const cubes: BootCubeV3[] = data
+      .trim()
+      .split(/\n/)
+      .map((i) => {
+        const cubeRegex =
+          /(o(?:n|ff)) x=(-?\d+)\.\.(-?\d+),y=(-?\d+)\.\.(-?\d+),z=(-?\d+)\.\.(-?\d+)/.exec(
+            i
+          );
+        if (!cubeRegex) throw new Error("Error reading boot cube data");
+        const [x1, x2, y1, y2, z1, z2] = cubeRegex
+          .slice(2)
+          .map((i) => Number.parseInt(i));
+        return {
+          state: cubeRegex[1] === "on",
+          rangeX: [x1, x2].sort((a, b) => a - b) as Range,
+          rangeY: [y1, y2].sort((a, b) => a - b) as Range,
+          rangeZ: [z1, z2].sort((a, b) => a - b) as Range,
+        };
+      });
+
+    // Thanks to GitHub user leyanlo for this function -- not proud of using this, but I am tired
+    const Intersect = (a: Range[], b: Range[]): Range[] | null => {
+      const c = [0, 1, 2].map(
+        (i) => [Math.max(a[i][0], b[i][0]), Math.min(a[i][1], b[i][1])] as Range
+      );
+      if (c.some(([min, max]) => min > max)) {
+        return null;
+      }
+      return c;
+    };
+
+    const IntersectAdapter = (
+      lhs: BootCubeV3,
+      rhs: BootCubeV3
+    ): BootCubeV3 | null => {
+      const c = Intersect(
+        [lhs.rangeX, lhs.rangeY, lhs.rangeZ],
+        [rhs.rangeX, rhs.rangeY, rhs.rangeZ]
+      );
+      if (!c) return null;
+      const [rangeX, rangeY, rangeZ] = c;
+      return {
+        state: !rhs.state,
+        rangeX,
+        rangeY,
+        rangeZ,
+      };
+    };
+
+    const bigMap: BootCubeV3[] = [];
+
+    for (const cube of cubes) {
+      for (const compCube of bigMap.slice()) {
+        const intersect = IntersectAdapter(cube, compCube);
+        if (intersect) bigMap.push(intersect);
+      }
+      if (cube.state) bigMap.push(cube);
+    }
+
+    const RangeSize = (range: Range) => range[1] - range[0] + 1;
+    const Volume = (cube: BootCubeV3) =>
+      RangeSize(cube.rangeX) * RangeSize(cube.rangeY) * RangeSize(cube.rangeZ);
+
+    return bigMap.reduce((r, i) => r + Volume(i) * (i.state ? 1 : -1), 0);
   }
 }
