@@ -9,5 +9,6 @@ lib
 !.yarn/versions
 .pnp.*
 
-**/cookie.json
+cache/*
 .env
+backup?.mzx

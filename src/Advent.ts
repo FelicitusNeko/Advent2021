@@ -1,4 +1,16 @@
+import {
+  // createWriteStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "fs";
 import { get as httpsGet } from "https";
+import { join as pathJoin } from "path";
+import {
+  ALS /*, ALSInstructionType, ALSProgramState*/,
+  ALSProgramState,
+} from "./ALS";
 import BITSReader, {
   BITSLiteralPacket,
   BITSOperatorPacket,
@@ -7,26 +19,10 @@ import BITSReader, {
 } from "./BITSReader";
 
 const useTestData = false;
-const testData = `on x=-20..26,y=-36..17,z=-47..7
-on x=-20..33,y=-21..23,z=-26..28
-on x=-22..28,y=-29..23,z=-38..16
-on x=-46..7,y=-6..46,z=-50..-1
-on x=-49..1,y=-3..46,z=-24..28
-on x=2..47,y=-22..22,z=-23..27
-on x=-27..23,y=-28..26,z=-21..29
-on x=-39..5,y=-6..47,z=-3..44
-on x=-30..21,y=-8..43,z=-13..34
-on x=-22..26,y=-27..20,z=-29..19
-off x=-48..-32,y=26..41,z=-47..-37
-on x=-12..35,y=6..50,z=-50..-2
-off x=-48..-32,y=-32..-16,z=-15..-5
-on x=-18..26,y=-33..15,z=-7..46
-off x=-40..-22,y=-38..-28,z=23..41
-on x=-16..35,y=-41..10,z=-47..6
-off x=-32..-23,y=11..30,z=-14..3
-on x=-49..-5,y=-3..45,z=-29..18
-off x=18..30,y=-20..-8,z=-3..13
-on x=-41..9,y=-7..43,z=-33..15`;
+const testData = `inp z
+inp x
+mul z 3
+eql z x`;
 
 // Day 4
 interface BingoBoard {
@@ -92,7 +88,14 @@ interface BootCubeV3 {
 
 // General utility
 const getInput = (year: number, day: number) => {
-  if (useTestData && testData !== null) return testData;
+  if (useTestData && testData !== null) return Promise.resolve(testData);
+  if (!existsSync("cache")) mkdirSync("cache");
+  const cachePath = pathJoin("cache", year.toString());
+  if (!existsSync(cachePath)) mkdirSync(cachePath);
+  const cacheFile = pathJoin(cachePath, `${day}.txt`);
+  if (existsSync(cacheFile))
+    return Promise.resolve(readFileSync(cacheFile).toString());
+
   const { USERAGENT, COOKIE } = process.env;
   const url = `https://adventofcode.com/${year}/day/${day}/input`;
   return new Promise<string>((f, r) => {
@@ -107,7 +110,10 @@ const getInput = (year: number, day: number) => {
       (res) => {
         let data = "";
         res.on("data", (chunk) => (data += chunk.toString()));
-        res.on("close", () => f(data));
+        res.on("close", () => {
+          writeFileSync(cacheFile, data);
+          f(data);
+        });
         res.on("error", (e) => r(e));
       }
     );
@@ -141,6 +147,8 @@ export default class Advent {
       [this.Day20Problem1, this.Day20Problem2],
       [this.Day21Problem1, this.Day21Problem2],
       [this.Day22Problem1, this.Day22Problem2],
+      [this.Day23Problem1, this.Dummy],
+      [this.Day24Problem1, this.Day24Problem2],
     ];
   }
 
@@ -2194,5 +2202,115 @@ export default class Advent {
       RangeSize(cube.rangeX) * RangeSize(cube.rangeY) * RangeSize(cube.rangeZ);
 
     return bigMap.reduce((r, i) => r + Volume(i) * (i.state ? 1 : -1), 0);
+  }
+
+  // Day 23 (skipped)
+  async Day23Problem1(data: string) {
+    // (not) completed using MZX
+    console.debug(data);
+    return 0;
+  }
+
+  // Day 24
+  RecurseMonad(
+    alsUnit: ALS,
+    mem: Set<string>[],
+    direction: boolean,
+    recursion: number,
+    answer: string[]
+  ) {
+    if (answer[0]) return;
+    for (let dx = 0; dx <= 8; dx++) {
+      const x = direction ? dx + 1 : 9 - dx;
+      const state = `${alsUnit.z}|${x}`;
+
+      // concept of using Sets adapted from hqli's solution, expanded to prevent crashing and
+      // heavily reduce memory usage without affecting performance too much
+      if (mem[recursion].has(state)) continue;
+      mem.push(new Set());
+
+      if (recursion < 3)
+        console.debug("Solving for #%d digit", recursion + 1, x);
+      console.group();
+
+      alsUnit.PushState();
+      alsUnit.AddInput(x);
+      alsUnit.Run();
+      if (alsUnit.state === ALSProgramState.NeedInput)
+        this.RecurseMonad(alsUnit, mem, direction, recursion + 1, answer);
+      else if (alsUnit.state === ALSProgramState.Done) {
+        if (alsUnit.z === 0) {
+          answer.push(alsUnit.processedInput.join(""));
+          console.debug("Answer found:", answer[answer.length - 1]);
+        }
+      }
+      alsUnit.PopState();
+
+      try {
+        mem[recursion].add(state);
+      } catch (e) {
+        console.log(alsUnit.processedInput.join(""));
+        mem[recursion] = new Set();
+        mem[recursion].add(state);
+      }
+      mem.pop();
+      console.groupEnd();
+    }
+  }
+
+  async Day24Problem1(data: string) {
+    const alsUnit = new ALS(data);
+    const mem: Set<string>[] = [];
+    for (let x = 0; x < 5; x++) mem.push(new Set());
+    const answer: string[] = [];
+
+    this.RecurseMonad(alsUnit, mem, false, 0, answer);
+
+    console.debug(answer);
+    if (!answer[0]) return 0;
+    return answer;
+  }
+
+  async Day24Problem2(data: string) {
+    const alsUnit = new ALS(data);
+    const mem: Set<string>[] = [];
+    for (let x = 0; x < 5; x++) mem.push(new Set());
+    const answer: string[] = [];
+
+    this.RecurseMonad(alsUnit, mem, true, 0, answer);
+
+    console.debug(answer);
+    if (!answer[0]) return 0;
+    return answer[0];
+
+    /*
+      Just for fun, the complete set of valid serial numbers for my input:
+      [
+        '11911316711816', '11911326711916', '12911316711826',
+        '12911326711926', '13911316711836', '13911326711936',
+        '14911316711846', '14911326711946', '15911316711856',
+        '15911326711956', '16911316711866', '16911326711966',
+        '17911316711876', '17911326711976', '18911316711886',
+        '18911326711986', '19911316711896', '19911326711996',
+        '21911316711817', '21911326711917', '22911316711827',
+        '22911326711927', '23911316711837', '23911326711937',
+        '24911316711847', '24911326711947', '25911316711857',
+        '25911326711957', '26911316711867', '26911326711967',
+        '27911316711877', '27911326711977', '28911316711887',
+        '28911326711987', '29911316711897', '29911326711997',
+        '31911316711818', '31911326711918', '32911316711828',
+        '32911326711928', '33911316711838', '33911326711938',
+        '34911316711848', '34911326711948', '35911316711858',
+        '35911326711958', '36911316711868', '36911326711968',
+        '37911316711878', '37911326711978', '38911316711888',
+        '38911326711988', '39911316711898', '39911326711998',
+        '41911316711819', '41911326711919', '42911316711829',
+        '42911326711929', '43911316711839', '43911326711939',
+        '44911316711849', '44911326711949', '45911316711859',
+        '45911326711959', '46911316711869', '46911326711969',
+        '47911316711879', '47911326711979', '48911316711889',
+        '48911326711989', '49911316711899', '49911326711999'
+      ]
+    */
   }
 }
