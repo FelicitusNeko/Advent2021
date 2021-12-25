@@ -7,22 +7,25 @@ import {
 } from "fs";
 import { get as httpsGet } from "https";
 import { join as pathJoin } from "path";
-import {
-  ALS /*, ALSInstructionType, ALSProgramState*/,
-  ALSProgramState,
-} from "./ALS";
+
 import BITSReader, {
   BITSLiteralPacket,
   BITSOperatorPacket,
   BITSPacket,
   BITSPacketType,
 } from "./BITSReader";
+import { ALS, ALSProgramState } from "./ALS";
 
 const useTestData = false;
-const testData = `inp z
-inp x
-mul z 3
-eql z x`;
+const testData = `v...>>.vv>
+.vv>>.vv..
+>>.>v>...v
+>>v>>.>.v.
+v>v.vv.v..
+>.>>..v...
+.vv..>.>v.
+v.v..>>v.v
+....v..v.>`;
 
 // Day 4
 interface BingoBoard {
@@ -149,6 +152,7 @@ export default class Advent {
       [this.Day22Problem1, this.Day22Problem2],
       [this.Day23Problem1, this.Dummy],
       [this.Day24Problem1, this.Day24Problem2],
+      [this.Day25Problem, this.Day25Ending],
     ];
   }
 
@@ -2312,5 +2316,89 @@ export default class Advent {
         '48911326711989', '49911316711899', '49911326711999'
       ]
     */
+  }
+
+  // Day 25
+  async Day25Problem(data: string) {
+    interface SeaCucumber {
+      pos: Position2D;
+      goingSouth: boolean;
+    }
+    interface TrenchMap {
+      width: number;
+      height: number;
+      cucumbers: SeaCucumber[];
+    }
+    interface QueuedMove {
+      cucumber: SeaCucumber;
+      nextPos: Position2D;
+    }
+
+    const rawData = data
+      .trim()
+      .split(/\n/)
+      .map((i) => i.split(""));
+
+    const map: TrenchMap = {
+      width: rawData[0].length,
+      height: rawData.length,
+      cucumbers: [],
+    };
+
+    for (let y = 0; y < map.height; y++)
+      for (let x = 0; x < map.width; x++) {
+        switch (rawData[y][x]) {
+          case ">":
+          case "v":
+            map.cucumbers.push({
+              pos: { x, y },
+              goingSouth: rawData[y][x] === "v",
+            });
+            break;
+        }
+      }
+
+    const NextPos = ({ pos, goingSouth }: SeaCucumber): Position2D => {
+      return {
+        x: (goingSouth ? pos.x : pos.x + 1) % map.width,
+        y: (goingSouth ? pos.y + 1 : pos.y) % map.height,
+      };
+    };
+
+    let done = false;
+    let retval = 0;
+    while (!done) {
+      done = true;
+      retval++;
+      // console.debug('Contemplating move:', retval);
+      const queuedMoves: QueuedMove[] = [];
+
+      for (const southChk of [false, true]) {
+        for (const cucumber of map.cucumbers.filter(i => i.goingSouth === southChk)) {
+          const nextPos = NextPos(cucumber);
+          if (
+            !map.cucumbers.find(
+              (i) => i.pos.x == nextPos.x && i.pos.y == nextPos.y
+            )
+          )
+            queuedMoves.push({ cucumber, nextPos });
+        }
+  
+        done &&= queuedMoves.length === 0;
+        let move = queuedMoves.shift();
+        while (move) {
+          const { cucumber, nextPos } = move;
+          cucumber.pos = nextPos;
+          move = queuedMoves.shift();
+        }
+      }
+    }
+
+    return retval;
+  }
+
+  async Day25Ending() {
+    console.info('No part 2 for day 25. Solve by getting all 49 previous stars.')
+    return 45;
   }
 }
